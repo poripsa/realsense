@@ -264,6 +264,7 @@ void BaseRealSenseNode::setupPublishers()
             if (stream == DEPTH && _pointcloud)
             {
                 _pointcloud_publisher = _node_handle.advertise<sensor_msgs::PointCloud2>("depth/color/points", 1);
+                _raw_pointcloud_publisher = _node_handle.advertise<sensor_msgs::PointCloud2>("depth/points", 1);
             }
         }
     }
@@ -397,6 +398,12 @@ void BaseRealSenseNode::setupStreams()
             {
                 ROS_DEBUG("publishPCTopic(...)");
                 publishPCTopic(t);
+            }
+
+            if(_pointcloud && is_depth_frame_arrived && (0 != _raw_pointcloud_publisher.getNumSubscribers()))
+            {
+                ROS_DEBUG("publishNCTopic(...)");
+                publishNCTopic(t);
             }
         };
 
@@ -883,6 +890,60 @@ void BaseRealSenseNode::publishPCTopic(const ros::Time& t)
     }
     _pointcloud_publisher.publish(msg_pointcloud);
 }
+
+void BaseRealSenseNode::publishNCTopic(const ros::Time& t)
+{
+  auto image_depth16 = reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
+  auto depth_intrinsics = _stream_intrinsics[DEPTH];
+  sensor_msgs::PointCloud2 msg2_pointcloud;
+  msg2_pointcloud.header.stamp = t;
+  msg2_pointcloud.header.frame_id = _optical_frame_id[DEPTH];
+  msg2_pointcloud.width = depth_intrinsics.width;
+  msg2_pointcloud.height = depth_intrinsics.height;
+  msg2_pointcloud.is_dense = true;
+
+  sensor_msgs::PointCloud2Modifier modifier(msg2_pointcloud);
+
+  modifier.setPointCloud2Fields(3,//4,
+                                "x", 1, sensor_msgs::PointField::FLOAT32,
+                                "y", 1, sensor_msgs::PointField::FLOAT32,
+                                "z", 1, sensor_msgs::PointField::FLOAT32);
+  modifier.setPointCloud2FieldsByString(1, "xyz");
+  sensor_msgs::PointCloud2Iterator<float>iter_x(msg2_pointcloud, "x");
+  sensor_msgs::PointCloud2Iterator<float>iter_y(msg2_pointcloud, "y");
+  sensor_msgs::PointCloud2Iterator<float>iter_z(msg2_pointcloud, "z");
+
+  float depth_point[3], scaled_depth;
+
+  // Fill the PointCloud2 fields
+  for (int y = 0; y < depth_intrinsics.height; ++y)
+  {
+    for (int x = 0; x < depth_intrinsics.width; ++x)
+    {
+      scaled_depth = static_cast<float>(*image_depth16) * _depth_scale_meters;
+      float depth_pixel[2] = {static_cast<float>(x), static_cast<float>(y)};
+      rs2_deproject_pixel_to_point(depth_point, &depth_intrinsics, depth_pixel, scaled_depth);
+
+      if (depth_point[2] <= 0.f || depth_point[2] > 5.f)
+      {
+        depth_point[0] = 0.f;
+        depth_point[1] = 0.f;
+        depth_point[2] = 0.f;
+      }
+
+      *iter_x = depth_point[0];
+      *iter_y = depth_point[1];
+      *iter_z = depth_point[2];
+
+      rs2_project_point_to_pixel(depth_pixel, &depth_intrinsics, depth_point);
+
+      ++image_depth16;
+      ++iter_x; ++iter_y; ++iter_z;
+    }
+  }
+  _raw_pointcloud_publisher.publish(msg2_pointcloud);
+}
+
 
 Extrinsics BaseRealSenseNode::rsExtrinsicsToMsg(const rs2_extrinsics& extrinsics) const
 {

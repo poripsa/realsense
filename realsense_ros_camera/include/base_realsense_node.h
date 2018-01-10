@@ -57,6 +57,7 @@ namespace realsense_ros_camera
         Eigen::Quaternionf rotationMatrixToQuaternion(float rotation[3]) const;
         void publishStaticTransforms();
         void publishPCTopic(const ros::Time& t);
+        void publishNCTopic(const ros::Time& t);
         Extrinsics rsExtrinsicsToMsg(const rs2_extrinsics& extrinsics) const;
         Extrinsics getFisheye2ImuExtrinsicsMsg();
         Extrinsics getFisheye2DepthExtrinsicsMsg();
@@ -97,6 +98,7 @@ namespace realsense_ros_camera
         std::map<stream_index_pair, std::vector<rs2::stream_profile>> _enabled_profiles;
 
         ros::Publisher _pointcloud_publisher;
+        ros::Publisher _raw_pointcloud_publisher;
         ros::Time _ros_time_base;
         bool _sync_frames;
         bool _pointcloud;
