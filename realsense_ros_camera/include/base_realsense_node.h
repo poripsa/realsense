@@ -21,7 +21,8 @@ namespace realsense_ros_camera
         base_depth_output_trigger_enabled,
         base_depth_units,
         base_JSON_file_path,
-        base_depth_count
+        base_depth_count,
+        set_temp_fil
     };
 
     class BaseRealSenseNode : public InterfaceRealSenseNode
@@ -56,8 +57,11 @@ namespace realsense_ros_camera
         void updateStreamCalibData(const rs2::video_stream_profile& video_profile);
         Eigen::Quaternionf rotationMatrixToQuaternion(float rotation[3]) const;
         void publishStaticTransforms();
-        void publishPCTopic(const ros::Time& t);
-        void publishNCTopic(const ros::Time& t);
+        void publishPCTopic(const ros::Time& t, bool colorized_pointcloud);
+        //void publishITRTopic(float iter_x, float iter_y, float iter_z, float iter_r, float iter_g, float iter_b);
+            //sensor_msgs::PointCloud2Iterator&iter_x,sensor_msgs::PointCloud2Iterator&iter_y,sensor_msgs::PointCloud2Iterator&iter_z,sensor_msgs::PointCloud2Iterator&iter_r,sensor_msgs::PointCloud2Iterator&iter_g,sensor_msgs::PointCloud2Iterator&iter_b);
+
+        //void publishNCTopic(const ros::Time& t, bool colorized_pointcloud);
         Extrinsics rsExtrinsicsToMsg(const rs2_extrinsics& extrinsics) const;
         Extrinsics getFisheye2ImuExtrinsicsMsg();
         Extrinsics getFisheye2DepthExtrinsicsMsg();
