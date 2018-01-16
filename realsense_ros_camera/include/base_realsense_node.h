@@ -21,8 +21,7 @@ namespace realsense_ros_camera
         base_depth_output_trigger_enabled,
         base_depth_units,
         base_JSON_file_path,
-        base_depth_count,
-        set_temp_fil
+        base_depth_count
     };
 
     class BaseRealSenseNode : public InterfaceRealSenseNode
