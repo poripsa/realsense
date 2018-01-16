@@ -58,14 +58,7 @@ namespace realsense_ros_camera
         Eigen::Quaternionf rotationMatrixToQuaternion(float rotation[3]) const;
         void publishStaticTransforms();
         void publishPCTopic(const ros::Time& t, bool colorized_pointcloud);
-        //void publishITRTopic(float* iter_x, float* iter_y, float* iter_z, uint8_t *iter_r, uint8_t *iter_g, uint8_t *iter_b);
-        //void publishITRTopic(sensor_msgs::PointField::FLOAT32 iter_x, sensor_msgs::PointCloud2Iterator& iter_rgb);
         void publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud, bool colorized_pointcloud);
-        //void publishITRTopic(sensor_msgs::PointField::FLOAT32& iter_x, sensor_msgs::PointField::FLOAT32& iter_rgb);
-
-        //sensor_msgs::PointCloud2Iterator&iter_x,sensor_msgs::PointCloud2Iterator&iter_y,sensor_msgs::PointCloud2Iterator&iter_z,sensor_msgs::PointCloud2Iterator&iter_r,sensor_msgs::PointCloud2Iterator&iter_g,sensor_msgs::PointCloud2Iterator&iter_b);
-
-        //void publishNCTopic(const ros::Time& t, bool colorized_pointcloud);
         Extrinsics rsExtrinsicsToMsg(const rs2_extrinsics& extrinsics) const;
         Extrinsics getFisheye2ImuExtrinsicsMsg();
         Extrinsics getFisheye2DepthExtrinsicsMsg();
