@@ -367,6 +367,14 @@ void BaseRealSenseNode::setupStreams()
 
             auto is_color_frame_arrived = false;
             auto is_depth_frame_arrived = false;
+
+            /*rs2::temporal_filter temporal_filter;
+            rs2::frame depth_frame = data.get_depth_frame();
+            frame = temporal_filter.proccess(depth_frame);
+            temporal_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, params.temporal_magnitude);
+            temporal_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, params.temp_smooth_alpha);*/
+
+
             if (frame.is<rs2::frameset>())
             {
                 ROS_DEBUG("Frameset arrived");
@@ -392,6 +400,8 @@ void BaseRealSenseNode::setupStreams()
                           rs2_stream_to_string(stream_type), frame.get_frame_number(), frame.get_timestamp(), t.toNSec());
                 publishFrame(frame, t);
             }
+
+
 
             if(_pointcloud && is_depth_frame_arrived && (0 != _raw_pointcloud_publisher.getNumSubscribers()))
             {
@@ -808,6 +818,13 @@ void BaseRealSenseNode::publishStaticTransforms()
     // TODO: Publish Fisheye TF
 }
 
+/*rs2::frame BaseRealSenseNode::setFilter(rs2::frame frame)
+{
+  rs2::temporal_filter temporal_filter;
+  frame = temporal_filter.proccess(frame);
+  return frame;
+}*/
+
 void BaseRealSenseNode::publishPCTopic(const ros::Time& t, bool colorized_pointcloud)
 {
     auto depth_intrinsics = _stream_intrinsics[DEPTH];
@@ -1067,6 +1084,7 @@ BaseD400Node::BaseD400Node(ros::NodeHandle& nodeHandle,
 
 void BaseD400Node::callback(base_d400_paramsConfig &config, uint32_t level)
 {
+
     ROS_DEBUG_STREAM("D400 - Level: " << level);
 
     if (set_default_dynamic_reconfig_values == level)
@@ -1110,6 +1128,10 @@ void BaseD400Node::setParam(rs415_paramsConfig &config, base_depth_param param)
     base_config.base_depth_output_trigger_enabled = config.rs415_depth_output_trigger_enabled;
     base_config.base_depth_units = config.rs415_depth_units;
     base_config.base_JSON_file_path = config.rs415_JSON_file_path;
+    //const float FILTER_OPTION = 1;
+    //setOption(DEPTH, RS2_OPTION_FILTER_OPTION, 16);
+    //ROS_INFO("setting param");
+    //setFilter();
     setParam(base_config, param);
 }
 
