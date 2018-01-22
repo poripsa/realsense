@@ -1,4 +1,5 @@
 #include "../include/base_realsense_node.h"
+#include "../include/temporal.h"
 
 using namespace realsense_ros_camera;
 
@@ -265,6 +266,7 @@ void BaseRealSenseNode::setupPublishers()
             {
                 _pointcloud_publisher = _node_handle.advertise<sensor_msgs::PointCloud2>("depth/color/points", 1);
                 _raw_pointcloud_publisher = _node_handle.advertise<sensor_msgs::PointCloud2>("depth/points", 1);
+                _filtered_pointcloud_publisher = _node_handle.advertise<sensor_msgs::PointCloud2>("filtered/points", 1);
             }
         }
     }
@@ -352,6 +354,17 @@ void BaseRealSenseNode::setupStreams()
             // We compute a ROS timestamp which is based on an initial ROS time at point of first frame,
             // and the incremental timestamp from the camera.
             // In sync mode the timestamp is based on ROS time
+          /*rs2::temporal_filter temporal_filter;
+          rs2::pipeline pipe;
+          rs2::frameset data = pipe.wait_for_frames();
+          rs2::frame depth_frame = data.get_depth_frame();
+          //_dev->get_frame_data(rs::stream::depth);
+          frame = temporal_filter.proccess(depth_frame);
+          temporal_filter.set_option(RS2_OPTION_FILTER_OPTION, 1);
+          temporal_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 5.0f);
+          temporal_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.25f);*/
+          //ROS_INFO("setting filter");
+
             if (false == _intialize_time_base)
             {
                 _intialize_time_base = true;
@@ -368,17 +381,25 @@ void BaseRealSenseNode::setupStreams()
             auto is_color_frame_arrived = false;
             auto is_depth_frame_arrived = false;
 
+            //_sensors[DEPTH].set_option(rs2_option::RS2_OPTION_FILTER_OPTION, 16.0f);
             /*rs2::temporal_filter temporal_filter;
-            rs2::frame depth_frame = data.get_depth_frame();
-            frame = temporal_filter.proccess(depth_frame);
-            temporal_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, params.temporal_magnitude);
-            temporal_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, params.temp_smooth_alpha);*/
+            rs2::options
+
+            auto stream = streams.front();
+            auto& sens = _sensors[stream];
+            sens.open(profiles);*/
 
 
             if (frame.is<rs2::frameset>())
             {
                 ROS_DEBUG("Frameset arrived");
                 auto frameset = frame.as<rs2::frameset>();
+                /*rs2::frame depth_frame = frameset.get_depth_frame();
+                depth_frame = temporal_filter.proccess(depth_frame);
+                temporal_filter.set_option(RS2_OPTION_FILTER_OPTION, 1);
+                temporal_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 5.0f);
+                temporal_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.25f);*/
+
                 for (auto it = frameset.begin(); it != frameset.end(); ++it)
                 {
                     auto f = (*it);
@@ -401,21 +422,31 @@ void BaseRealSenseNode::setupStreams()
                 publishFrame(frame, t);
             }
 
-
+            //ROS_INFO("SOMEWHERE2");
+            //librealsense::
 
             if(_pointcloud && is_depth_frame_arrived && (0 != _raw_pointcloud_publisher.getNumSubscribers()))
             {
-              ROS_INFO("publishNCTopic(...)");
+              //ROS_INFO("publishNCTopic(...)");
               publishPCTopic(t, false);
+            }
+
+            if(_pointcloud && is_depth_frame_arrived && (0 != _filtered_pointcloud_publisher.getNumSubscribers()))
+            {
+              //ROS_INFO("publishNCTopic(...)");
+              publishFPCTopic(t);
             }
 
             if(_pointcloud && is_depth_frame_arrived && is_color_frame_arrived &&
                (0 != _pointcloud_publisher.getNumSubscribers()))
             {
-              ROS_INFO("publishPCTopic(...)");
+              //ROS_INFO("publishPCTopic(...)");
               publishPCTopic(t, true);
             }
         };
+
+        ROS_INFO("SOMEWHERE");
+
 
         // Streaming IMAGES
         for (auto& streams : IMAGE_STREAMS)
@@ -958,6 +989,11 @@ void BaseRealSenseNode::publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud
     }
 }
 
+void BaseRealSenseNode::publishFPCTopic(const ros::Time& t)
+{
+    Temporal temp;
+}
+
 Extrinsics BaseRealSenseNode::rsExtrinsicsToMsg(const rs2_extrinsics& extrinsics) const
 {
     Extrinsics extrinsicsMsg;
@@ -1129,7 +1165,7 @@ void BaseD400Node::setParam(rs415_paramsConfig &config, base_depth_param param)
     base_config.base_depth_units = config.rs415_depth_units;
     base_config.base_JSON_file_path = config.rs415_JSON_file_path;
     //const float FILTER_OPTION = 1;
-    //setOption(DEPTH, RS2_OPTION_FILTER_OPTION, 16);
+    setOption(DEPTH, RS2_OPTION_FILTER_OPTION, true);
     //ROS_INFO("setting param");
     //setFilter();
     setParam(base_config, param);

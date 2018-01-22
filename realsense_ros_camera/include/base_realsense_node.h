@@ -59,6 +59,7 @@ namespace realsense_ros_camera
         //rs2::frame BaseRealSenseNode::setFilter(rs2::frame frame);
         void publishPCTopic(const ros::Time& t, bool colorized_pointcloud);
         void publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud, bool colorized_pointcloud);
+        void publishFPCTopic(const ros::Time& t);
         Extrinsics rsExtrinsicsToMsg(const rs2_extrinsics& extrinsics) const;
         Extrinsics getFisheye2ImuExtrinsicsMsg();
         Extrinsics getFisheye2DepthExtrinsicsMsg();
@@ -100,6 +101,7 @@ namespace realsense_ros_camera
 
         ros::Publisher _pointcloud_publisher;
         ros::Publisher _raw_pointcloud_publisher;
+        ros::Publisher _filtered_pointcloud_publisher;
         ros::Time _ros_time_base;
         bool _sync_frames;
         bool _pointcloud;

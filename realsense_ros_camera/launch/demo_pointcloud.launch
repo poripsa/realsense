@@ -1,6 +1,6 @@
 <launch>
   <arg name="serial_no"    default=""/>
-  <arg name="json_file_path"  default="$(find realsense_ros_camera)/launch/sr.json"/>
+  <arg name="json_file_path"  default="$(find realsense_ros_camera)/launch/ppoff.json"/>
 
   <group ns="camera">
     <include file="$(find realsense_ros_camera)/launch/includes/nodelet.launch.xml">
