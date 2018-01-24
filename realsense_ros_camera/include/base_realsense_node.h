@@ -59,7 +59,7 @@ namespace realsense_ros_camera
         //rs2::frame BaseRealSenseNode::setFilter(rs2::frame frame);
         void publishPCTopic(const ros::Time& t, bool colorized_pointcloud);
         void publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud, bool colorized_pointcloud);
-        void publishFPCTopic(const ros::Time& t);
+        void publishFPCTopic(rs2::frame frame,const ros::Time& t);
         Extrinsics rsExtrinsicsToMsg(const rs2_extrinsics& extrinsics) const;
         Extrinsics getFisheye2ImuExtrinsicsMsg();
         Extrinsics getFisheye2DepthExtrinsicsMsg();

@@ -11,7 +11,8 @@ public:
     Temporal(ros::NodeHandle& nodeHandle,
               ros::NodeHandle& privateNodeHandle,
               rs2::device dev, const std::string& serial_no);
+    sensor_msgs::ImagePtr getImage(uchar *image_data);
 private:
-    void getImage(uchar *image);
+
     void returnAverage();
 };

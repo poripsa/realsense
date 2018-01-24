@@ -434,7 +434,7 @@ void BaseRealSenseNode::setupStreams()
             if(_pointcloud && is_depth_frame_arrived && (0 != _filtered_pointcloud_publisher.getNumSubscribers()))
             {
               //ROS_INFO("publishNCTopic(...)");
-              publishFPCTopic(t);
+              publishFPCTopic(frame, t);
             }
 
             if(_pointcloud && is_depth_frame_arrived && is_color_frame_arrived &&
@@ -989,9 +989,16 @@ void BaseRealSenseNode::publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud
     }
 }
 
-void BaseRealSenseNode::publishFPCTopic(const ros::Time& t)
+void BaseRealSenseNode::publishFPCTopic(rs2::frame frame, const ros::Time& t)
 {
-    Temporal temp;
+    //Temporal temp(_node_handle, _pnh, _dev, _serial_no);
+    stream_index_pair stream{frame.get_profile().stream_type(), frame.get_profile().stream_index()};
+    auto& image = _image[stream];
+    image.data = (uint8_t*)frame.get_data();
+    //sensor_msgs::ImagePtr img;
+    //img = temp.getImage(image.data);
+
+    //_filtered_pointcloud_publisher.publish(img);
 }
 
 Extrinsics BaseRealSenseNode::rsExtrinsicsToMsg(const rs2_extrinsics& extrinsics) const
