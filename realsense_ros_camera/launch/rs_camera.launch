@@ -1,6 +1,6 @@
 <launch>
   <arg name="serial_no" default=""/>
-  <arg name="json_file_path" default=""/>
+  <arg name="json_file_path" default="$(find realsense_ros_camera)/launch/sr.json"/>
 
   <arg name="fisheye_width"       default="640"/>
   <arg name="fisheye_height"      default="480"/>

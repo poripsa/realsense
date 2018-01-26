@@ -1,5 +1,6 @@
 #include "../include/base_realsense_node.h"
 #include "../include/temporal.h"
+#include "../include/librs_postprocessing.h"
 
 using namespace realsense_ros_camera;
 
@@ -264,7 +265,7 @@ void BaseRealSenseNode::setupPublishers()
 
             if (stream == DEPTH && _pointcloud)
             {
-                _pointcloud_publisher = _node_handle.advertise<sensor_msgs::PointCloud2>("depth/color/points", 1);
+                _pointcloud_publisher = _node_handle.advertise<sensor_msgs::PointCloud2>("depth/color/points", 1); //realsense//
                 _raw_pointcloud_publisher = _node_handle.advertise<sensor_msgs::PointCloud2>("depth/points", 1);
                 _filtered_pointcloud_publisher = _node_handle.advertise<sensor_msgs::PointCloud2>("filtered/points", 1);
             }
@@ -296,6 +297,7 @@ void BaseRealSenseNode::setupPublishers()
         _fe_to_imu_publisher = _node_handle.advertise<Extrinsics>("extrinsics/fisheye2imu", 1, true);
     }
 }
+
 
 void BaseRealSenseNode::setupStreams()
 {
@@ -348,6 +350,25 @@ void BaseRealSenseNode::setupStreams()
                 updateStreamCalibData(video_profile);
             }
         }
+        ROS_INFO("SETTING PP BLOCKS");
+        //RSPPAPI::RSPP_Init();
+        //RSPPAPI::SetPostProcessingParams(2,2,2,0.5,20,5,0.25,50);
+        static rs2_error * e = nullptr;
+
+        static rs2_processing_block * temporal_filter_block = rs2_create_decimation_filter_block(&e);
+        static rs2_frame_queue * temporal_filter_queue = rs2_create_frame_queue(1, &e);
+        rs2_start_processing_queue(temporal_filter_block, temporal_filter_queue, &e);
+        //float temporal_table_idx;
+
+        rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_MAGNITUDE, (float)5, &e);
+        rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.25, &e);
+        rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_SMOOTH_DELTA, 50, &e);
+
+
+
+        //setFilters();
+
+        //rs2::frame frame =
 
         auto frame_callback = [this](rs2::frame frame)
         {
@@ -364,6 +385,8 @@ void BaseRealSenseNode::setupStreams()
           temporal_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 5.0f);
           temporal_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.25f);*/
           //ROS_INFO("setting filter");
+
+          // rs2_frame* get() const { return frame_ref; }
 
             if (false == _intialize_time_base)
             {
@@ -384,16 +407,33 @@ void BaseRealSenseNode::setupStreams()
             //_sensors[DEPTH].set_option(rs2_option::RS2_OPTION_FILTER_OPTION, 16.0f);
             /*rs2::temporal_filter temporal_filter;
             rs2::options
-
             auto stream = streams.front();
             auto& sens = _sensors[stream];
             sens.open(profiles);*/
+
+            ROS_INFO("before frame ref");
+
+            rs2_frame* frame_ref;
+            /*if (frame_ref == nullptr)
+            {
+               ROS_INFO("FRAME NULL");
+            }*/
+            //frame_ref.ge
+
+            /*frame_ref = RSPPAPI::PostProcessing(frame_ref);
+            ROS_INFO("after return");
+
+            rs2_release_frame(frame_ref);
+            ROS_INFO("clear");*/
+
 
 
             if (frame.is<rs2::frameset>())
             {
                 ROS_DEBUG("Frameset arrived");
                 auto frameset = frame.as<rs2::frameset>();
+                ROS_INFO("in frameset");
+
                 /*rs2::frame depth_frame = frameset.get_depth_frame();
                 depth_frame = temporal_filter.proccess(depth_frame);
                 temporal_filter.set_option(RS2_OPTION_FILTER_OPTION, 1);
@@ -407,12 +447,25 @@ void BaseRealSenseNode::setupStreams()
                     if (RS2_STREAM_COLOR == stream_type)
                         is_color_frame_arrived = true;
                     else if (RS2_STREAM_DEPTH == stream_type)
+                    {
                         is_depth_frame_arrived = true;
+                        //frame_ref = RSPPAPI::PostProcessing(frame_ref);
+                        //frame = Process(g_temporal_filter_block, g_temporal_filter_queue, frame);
+
+                        //rs2_delete_processing_block(temporal_filter_block);
+                        //rs2_delete_frame_queue(temporal_filter_queue);
+                        /*const uint8_t* rgb_frame_data = (const uint8_t*)(rs2_get_frame_data(frame, &e));
+                            auto image_depth16 = frame_depth_data;//reinterpret_cast<const uint16_t*>(_image[DEPTH].data);*/
+                    }
+
 
                     ROS_DEBUG("Frameset contain %s frame. frame_number: %llu ; frame_TS: %f ; ros_TS(NSec): %lu",
                               rs2_stream_to_string(stream_type), frame.get_frame_number(), frame.get_timestamp(), t.toNSec());
                     publishFrame(f, t);
                 }
+                //rs2_release_frame(frame_ref);
+
+
             }
             else
             {
@@ -422,13 +475,22 @@ void BaseRealSenseNode::setupStreams()
                 publishFrame(frame, t);
             }
 
-            //ROS_INFO("SOMEWHERE2");
-            //librealsense::
+
+
+            //auto frame_depth_data = reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
+
+            //uint16_t* frame_depth_data = (uint16_t*)(rs2_get_frame_data(frame_ref, &e));
+            //auto frame_depth_data = reinterpret_cast<const uint16_t*>(rs2_get_frame_data(frame_ref, &e));
+            //rs2_release_frame(frame_ref);
+
+            ROS_INFO("clear");
+
 
             if(_pointcloud && is_depth_frame_arrived && (0 != _raw_pointcloud_publisher.getNumSubscribers()))
             {
               //ROS_INFO("publishNCTopic(...)");
-              publishPCTopic(t, false);
+              auto frame_depth_data = reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
+              publishPCTopic(t, false, frame_depth_data);
             }
 
             if(_pointcloud && is_depth_frame_arrived && (0 != _filtered_pointcloud_publisher.getNumSubscribers()))
@@ -437,16 +499,32 @@ void BaseRealSenseNode::setupStreams()
               publishFPCTopic(frame, t);
             }
 
+
             if(_pointcloud && is_depth_frame_arrived && is_color_frame_arrived &&
                (0 != _pointcloud_publisher.getNumSubscribers()))
             {
+              ROS_INFO("rs2_process_frame");
+              frame_ref = frame.get();
+
+              rs2_process_frame(temporal_filter_block, frame_ref, &e);
+              rs2_frame * f = rs2_wait_for_frame(temporal_filter_queue, 10000, &e);
+              //auto image_depth16 = reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
+
+              //auto frame_depth_data = reinterpret_cast<const uint16_t*>(rs2_get_frame_data(f, &e));
+              //frame_depth_data = reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
+              const uint16_t* frame_depth_data = (const uint16_t*)(rs2_get_frame_data(f, &e));
+
+              rs2_release_frame(f);
+
               //ROS_INFO("publishPCTopic(...)");
-              publishPCTopic(t, true);
+              publishPCTopic(t, true, frame_depth_data);
+              if (f != nullptr)
+              {
+                 ROS_INFO("FRAME NOT NULL");
+              }
             }
         };
-
-        ROS_INFO("SOMEWHERE");
-
+        RSPPAPI::RSPP_Fini();
 
         // Streaming IMAGES
         for (auto& streams : IMAGE_STREAMS)
@@ -599,7 +677,9 @@ void BaseRealSenseNode::setupStreams()
             auto ex = getFisheye2ImuExtrinsicsMsg();
             _fe_to_imu_publisher.publish(ex);
         }
+        //RSPPAPI::RSPP_Fini();
     }
+
     catch(const std::exception& ex)
     {
         ROS_ERROR_STREAM("An exception has been thrown: " << ex.what());
@@ -855,8 +935,146 @@ void BaseRealSenseNode::publishStaticTransforms()
   frame = temporal_filter.proccess(frame);
   return frame;
 }*/
+/*
+void RSPP_Fini()
+{
+  // diparity to depth
+  rs2_delete_processing_block(g_disparity_transforg_2_block);
+  g_disparity_transforg_2_block = nullptr;
 
-void BaseRealSenseNode::publishPCTopic(const ros::Time& t, bool colorized_pointcloud)
+  rs2_delete_frame_queue(g_disparity_transforg_2_queue);
+  g_disparity_transforg_2_queue = nullptr;
+
+  // temporal
+  rs2_delete_processing_block(g_temporal_filter_block);
+  g_temporal_filter_block = nullptr;
+
+  rs2_delete_frame_queue(g_temporal_filter_queue);
+  g_temporal_filter_queue = nullptr;
+
+  // spatial
+  rs2_delete_processing_block(g_spatial_filter_block);
+  g_spatial_filter_block = nullptr;
+
+  rs2_delete_frame_queue(g_spatial_filter_queue);
+  g_spatial_filter_queue = nullptr;
+
+  // depth to disparity
+  rs2_delete_processing_block(g_disparity_transforg_1_block);
+  g_disparity_transforg_1_block = nullptr;
+
+  rs2_delete_frame_queue(g_disparity_transforg_1_queue);
+  g_disparity_transforg_1_queue = nullptr;
+
+  // downsample
+  rs2_delete_processing_block(g_decimation_filter_block);
+  g_decimation_filter_block = nullptr;
+
+  rs2_delete_frame_queue(g_decimation_filter_queue);
+  g_decimation_filter_block = nullptr;
+}
+
+
+rs2_frame * BaseRealSenseNode::setFilters(rs2_frame * frame, bool decimation, bool disparity, bool spatial, bool temporal)
+{
+  static rs2_error * e = nullptr;
+
+  static rs2_processing_block * decimation_filter_block = rs2_create_decimation_filter_block(&e);
+  static rs2_frame_queue * decimation_filter_queue = rs2_create_frame_queue(1, &e);
+  rs2_start_processing_queue(decimation_filter_block, decimation_filter_queue, &e);
+
+  static rs2_processing_block * disparity_transform_block = rs2_create_decimation_filter_block(&e);
+  static rs2_frame_queue * disparity_transform_queue = rs2_create_frame_queue(1, &e);
+  rs2_start_processing_queue(disparity_transform_block, disparity_transform_queue, &e);
+
+  static rs2_processing_block * spatial_filter_block = rs2_create_decimation_filter_block(&e);
+  static rs2_frame_queue * spatial_filter_queue = rs2_create_frame_queue(1, &e);
+  rs2_start_processing_queue(spatial_filter_block, spatial_filter_queue, &e);
+
+  static rs2_processing_block * temporal_filter_block = rs2_create_decimation_filter_block(&e);
+  static rs2_frame_queue * temporal_filter_queue = rs2_create_frame_queue(1, &e);
+  rs2_start_processing_queue(temporal_filter_block, temporal_filter_queue, &e);
+
+  rs2_set_option((rs2_options *)decimation_filter_block, RS2_OPTION_FILTER_MAGNITUDE, (float)downsample_factor, &e);
+  rs2_set_option((rs2_options *)spatial_filter_block, RS2_OPTION_FILTER_MAGNITUDE, (float)spatial_iter, &e);
+  rs2_set_option((rs2_options *)spatial_filter_block, RS2_OPTION_FILTER_SMOOTH_ALPHA, spatial_alpha, &e);
+  rs2_set_option((rs2_options *)spatial_filter_block, RS2_OPTION_FILTER_SMOOTH_DELTA, spatial_delta, &e);
+  rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_MAGNITUDE, (float)temporal_table_idx, &e);
+  rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_SMOOTH_ALPHA, temporal_alpha, &e);
+  rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_SMOOTH_DELTA, temporal_delta, &e);
+
+
+  if (decimation)
+    frame = Process(g_decimation_filter_block, g_decimation_filter_queue, frame);
+
+  // depth to disparity
+  if (disparity)
+    frame = Process(g_disparity_transforg_1_block, g_disparity_transforg_1_queue, frame);
+
+  // spatial
+  if (spatial)
+    frame = Process(g_spatial_filter_block, g_spatial_filter_queue, frame);
+
+  // temporal
+  if (temporal)
+  frame = Process(g_temporal_filter_block, g_temporal_filter_queue, frame);
+
+  // disparity to depth
+  frame = Process(g_disparity_transforg_2_block, g_disparity_transforg_2_queue, frame);
+
+  RSPP_Fini();
+
+  return frame;
+}
+
+void SetPostProcessingParams(rs2_processing_block * filter_block,int enable, int downsample_factor, int spatial_iter, float spatial_alpha, float spatial_delta,
+               int temporal_table_idx, float temporal_alpha, float temporal_delta)
+{
+  rs2_set_option((rs2_options *)decimation_filter_block, RS2_OPTION_FILTER_MAGNITUDE, (float)downsample_factor, &e);
+  rs2_set_option((rs2_options *)spatial_filter_block, RS2_OPTION_FILTER_MAGNITUDE, (float)spatial_iter, &e);
+  rs2_set_option((rs2_options *)spatial_filter_block, RS2_OPTION_FILTER_SMOOTH_ALPHA, spatial_alpha, &e);
+  rs2_set_option((rs2_options *)spatial_filter_block, RS2_OPTION_FILTER_SMOOTH_DELTA, spatial_delta, &e);
+  rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_MAGNITUDE, (float)temporal_table_idx, &e);
+  rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_SMOOTH_ALPHA, temporal_alpha, &e);
+  rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_SMOOTH_DELTA, temporal_delta, &e);
+}
+
+rs2_frame * Process(rs2_processing_block * block, rs2_frame_queue * queue, rs2_frame * frame)
+{
+  rs2_process_frame(block, frame, &e);
+  check_error(e);
+
+  rs2_frame * f = rs2_wait_for_frame(queue, 100, &e);
+  check_error(e);
+
+  return f;
+}
+
+rs2_frame * PostProcessing(rs2_frame * frame, bool decimation, bool disparity, bool spatial, bool temporal)
+{
+  // downsample
+  if (decimation)
+    frame = Process(g_decimation_filter_block, g_decimation_filter_queue, frame);
+
+  // depth to disparity
+  if (disparity)
+    frame = Process(g_disparity_transforg_1_block, g_disparity_transforg_1_queue, frame);
+
+  // spatial
+  if (spatial)
+    frame = Process(g_spatial_filter_block, g_spatial_filter_queue, frame);
+
+  // temporal
+  if (temporal)
+  frame = Process(g_temporal_filter_block, g_temporal_filter_queue, frame);
+
+  // disparity to depth
+  frame = Process(g_disparity_transforg_2_block, g_disparity_transforg_2_queue, frame);
+
+  return frame;
+}
+*/
+void BaseRealSenseNode::publishPCTopic(const ros::Time& t, bool colorized_pointcloud, const uint16_t *frame_depth_data)
 {
     auto depth_intrinsics = _stream_intrinsics[DEPTH];
     sensor_msgs::PointCloud2 msg_pointcloud;
@@ -876,7 +1094,7 @@ void BaseRealSenseNode::publishPCTopic(const ros::Time& t, bool colorized_pointc
                                     "z", 1, sensor_msgs::PointField::FLOAT32,
                                     "rgb", 1, sensor_msgs::PointField::FLOAT32);
       modifier.setPointCloud2FieldsByString(2, "xyz", "rgb");
-      publishITRTopic(msg_pointcloud, colorized_pointcloud);
+      publishITRTopic(msg_pointcloud, colorized_pointcloud, frame_depth_data);
     }
     else
     {
@@ -885,15 +1103,16 @@ void BaseRealSenseNode::publishPCTopic(const ros::Time& t, bool colorized_pointc
                                      "y", 1, sensor_msgs::PointField::FLOAT32,
                                      "z", 1, sensor_msgs::PointField::FLOAT32);
       modifier.setPointCloud2FieldsByString(1, "xyz");
-      publishITRTopic(msg_pointcloud, colorized_pointcloud);
+      publishITRTopic(msg_pointcloud, colorized_pointcloud, frame_depth_data);
     }
 }
 
-void BaseRealSenseNode::publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud, bool colorized_pointcloud)
+void BaseRealSenseNode::publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud, bool colorized_pointcloud, const uint16_t* frame_depth_data)
 {
     auto depth_intrinsics = _stream_intrinsics[DEPTH];
     auto color_intrinsics = _stream_intrinsics[COLOR];
-    auto image_depth16 = reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
+    ROS_INFO("in publish itr");
+    auto image_depth16 = frame_depth_data;//reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
     unsigned char* color_data = _image[COLOR].data;
     const float MIN_DEPTH_THRESHOLD = 0.f;
     const float MAX_DEPTH_THRESHOLD = 5.f;
@@ -992,9 +1211,9 @@ void BaseRealSenseNode::publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud
 void BaseRealSenseNode::publishFPCTopic(rs2::frame frame, const ros::Time& t)
 {
     //Temporal temp(_node_handle, _pnh, _dev, _serial_no);
-    stream_index_pair stream{frame.get_profile().stream_type(), frame.get_profile().stream_index()};
-    auto& image = _image[stream];
-    image.data = (uint8_t*)frame.get_data();
+    //stream_index_pair stream{frame.get_profile().stream_type(), frame.get_profile().stream_index()};
+    //auto& image = _image[stream];
+    //image.data = (uint8_t*)frame.get_data();
     //sensor_msgs::ImagePtr img;
     //img = temp.getImage(image.data);
 
@@ -1172,7 +1391,7 @@ void BaseD400Node::setParam(rs415_paramsConfig &config, base_depth_param param)
     base_config.base_depth_units = config.rs415_depth_units;
     base_config.base_JSON_file_path = config.rs415_JSON_file_path;
     //const float FILTER_OPTION = 1;
-    setOption(DEPTH, RS2_OPTION_FILTER_OPTION, true);
+    //setOption(DEPTH, RS2_OPTION_FILTER_OPTION, true);
     //ROS_INFO("setting param");
     //setFilter();
     setParam(base_config, param);
