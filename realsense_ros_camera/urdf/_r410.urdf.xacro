@@ -35,14 +35,10 @@ aluminum peripherial evalution case.
     <color rgba="0.5 0.5 0.5 1"/>
   </material>
 
-  <xacro:macro name="sensor_r410" params="parent *origin">
+  <xacro:macro name="sensor_r410" >
 
     <!-- camera body, with origin at bottom screw mount -->
-    <joint name="realsense_joint" type="fixed">
-      <xacro:insert_block name="origin" />
-      <parent link="${parent}"/>
-      <child link="realsense_link" />
-    </joint>
+
 
     <link name="realsense_link">
       <visual>
@@ -68,13 +64,13 @@ aluminum peripherial evalution case.
     </link>
     <link name="realsense_depth_frame"/>
     <link name="realsense_depth_optical_frame"/>
+    <link name="realsense_rgb_optical_frame"/>
     <link name="realsense_left_ir_frame"/>
     <link name="realsense_left_ir_optical_frame"/>
     <link name="realsense_right_ir_frame"/>
     <link name="realsense_right_ir_optical_frame"/>
 
-    <!--<xacro:calibration_definitions child_link="$realsense_link" parent_link="${parent}" />-->
-   
+
     <!-- camera depth joints and links -->
     <joint name="realsense_depth_joint" type="fixed">
       <origin xyz="${r410_cam_depth_px} ${r410_cam_depth_py} ${r410_cam_depth_pz}" rpy="0 0 0"/>
@@ -89,6 +85,11 @@ aluminum peripherial evalution case.
       <child link="realsense_depth_optical_frame" />
     </joint>
 
+    <joint name="realsense_depth_optical_joint" type="fixed">
+        <origin xyz="0 0 0" rpy="${-M_PI/2} 0 ${-M_PI/2}" />
+        <parent link="realsense_depth_frame" />
+        <child link="realsense_rgb_optical_frame" />
+    </joint>
       
     <!-- camera left IR joints and links -->
     <joint name="realsense_left_ir_joint" type="fixed">
