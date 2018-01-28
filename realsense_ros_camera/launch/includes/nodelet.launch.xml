@@ -44,7 +44,7 @@
   <arg name="enable_pointcloud"   default="false"/>
   <arg name="enable_sync"         default="false"/>
 
-  <node pkg="nodelet" type="nodelet" name="$(arg manager)" args="manager" output="screen"  launch-prefix="xterm -e gdb --args"/>
+  <node pkg="nodelet" type="nodelet" name="$(arg manager)" args="manager" output="screen"/>  <!--launch-prefix="xterm -e gdb args"-->
   <node pkg="nodelet" type="nodelet" name="realsense_ros_camera" args="load realsense_ros_camera/RealSenseNodeFactory $(arg manager)">
     <remap from="/camera/"                 to="/realsense/" />
     <param name="serial_no"                type="str"  value="$(arg serial_no)"/>

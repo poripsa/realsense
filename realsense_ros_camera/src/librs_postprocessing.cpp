@@ -176,23 +176,28 @@ rs2_frame * PostProcessing(rs2_frame * frame)
 {
   // downsample
   if (g_downSampleScale > 1)
+    ROS_INFO("down sampling");
     frame = Process(g_decimation_filter_block, g_decimation_filter_queue, frame);
 
   // depth to disparity
-  if (g_enable & (TEMPORAL_BIT | SPATIAL_BIT))
+  /*if (g_enable & (TEMPORAL_BIT | SPATIAL_BIT))
+    ROS_INFO("depth to disparity");
     frame = Process(g_disparity_transforg_1_block, g_disparity_transforg_1_queue, frame);
-
+*/
   // spatial
   if (g_enable & SPATIAL_BIT)
+    ROS_INFO("spatial");
     frame = Process(g_spatial_filter_block, g_spatial_filter_queue, frame);
 
   // temporal
   if (g_enable & TEMPORAL_BIT)
+    ROS_INFO("temporal");
     frame = Process(g_temporal_filter_block, g_temporal_filter_queue, frame);
-
+/*
   // disparity to depth
   if (g_enable & (TEMPORAL_BIT | SPATIAL_BIT))
+    ROS_INFO("disparity to depth");
     frame = Process(g_disparity_transforg_2_block, g_disparity_transforg_2_queue, frame);
-
+*/
   return frame;
 }

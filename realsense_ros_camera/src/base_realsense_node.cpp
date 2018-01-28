@@ -354,7 +354,8 @@ void BaseRealSenseNode::setupStreams()
         }
         ROS_INFO("SETTING PP BLOCKS");
         RSPPAPI::RSPP_Init();
-        RSPPAPI::SetPostProcessingParams(2,2,2,0.5,20,5,0.25,50);
+        //RSPPAPI::SetPostProcessingParams(1,2,2,0.5,20,5,0.25,50);
+        RSPPAPI::SetPostProcessingParams(1, 1, 2, 0.5f, 20.0f, 2, 0.25f, 50.0f);
         /*static rs2_error * e = nullptr;
 
         static rs2_processing_block * temporal_filter_block = rs2_create_temporal_filter_block(&e);
@@ -369,9 +370,14 @@ void BaseRealSenseNode::setupStreams()
         //setFilters();
 
         //rs2::frame frame =
+        //const rs2::video_frame vid_frame;
+
 
         auto frame_callback = [this](rs2::frame frame)
         {
+          //const rs2::video_frame vid_frame(frame);
+          auto image = frame.as<rs2::video_frame>();
+          int w;
 
           //float temporal_table_idx;
 /*
@@ -480,8 +486,10 @@ void BaseRealSenseNode::setupStreams()
             else
             {
                 auto stream_type = frame.get_profile().stream_type();
+                w = image.get_width();
                 ROS_DEBUG("%s video frame arrived. frame_number: %llu ; frame_TS: %f ; ros_TS(NSec): %lu",
                           rs2_stream_to_string(stream_type), frame.get_frame_number(), frame.get_timestamp(), t.toNSec());
+                ROS_INFO("here");
                 publishFrame(frame, t);
             }
 
@@ -494,6 +502,7 @@ void BaseRealSenseNode::setupStreams()
             //rs2_release_frame(frame_ref);
 
             //ROS_INFO("clear");
+            //const auto w = vid_frame.get_width();
 
 
             if(_pointcloud && is_depth_frame_arrived && (0 != _raw_pointcloud_publisher.getNumSubscribers()))
@@ -533,8 +542,9 @@ void BaseRealSenseNode::setupStreams()
               //rs2_process_frame(temporal_filter_block, frame_ref, &e);
               //rs2_frame * f = rs2_wait_for_frame(temporal_filter_queue, 10000, &e);
               rs2_frame * tf = PostProcessing(frame_ref);
+              //int w = rs2_get_frame_width(tf, &e);
               //tf = PostProcessing(frame_ref);
-              auto image_depth16 = reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
+              //auto image_depth16 = reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
 
               //auto frame_depth_data = reinterpret_cast<const uint16_t*>(rs2_get_frame_data(f, &e));
               //frame_depth_data = reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
@@ -548,12 +558,15 @@ void BaseRealSenseNode::setupStreams()
 
               //const uint16_t* frame_depth_data = (const uint16_t*)(rs2_get_frame_data(f, &e));
               rs2::frame frame2(tf);
-              const uint16_t* frame_depth_data = reinterpret_cast<const uint16_t*>(frame2.get_data());
+              auto frame_depth_data = (const uint16_t*)frame2.get_data();
               //get_frame_number(); rs2_get_frame_number(frame_ref, &e);
+              //>>>>>>>>>>>rs2_get_frame_width
+
 
 
               //ROS_INFO("publishPCTopic(...)");
               publishPCTopic(t, true, frame_depth_data);
+              //publishPCTopic(t, true, frame_depth_data, w);
               if (tf == nullptr)
               {
                  ROS_INFO("FRAME NULL");
@@ -1119,7 +1132,8 @@ rs2_frame * PostProcessing(rs2_frame * frame, bool decimation, bool disparity, b
   return frame;
 }
 */
-void BaseRealSenseNode::publishPCTopic(const ros::Time& t, bool colorized_pointcloud, const uint16_t *frame_depth_data)
+//void BaseRealSenseNode::publishPCTopic(const ros::Time& t, bool colorized_pointcloud,const uint16_t* frame_depth_data, int w)
+void BaseRealSenseNode::publishPCTopic(const ros::Time& t, bool colorized_pointcloud,const uint16_t* frame_depth_data)
 {
     auto depth_intrinsics = _stream_intrinsics[DEPTH];
     sensor_msgs::PointCloud2 msg_pointcloud;
@@ -1158,11 +1172,12 @@ void BaseRealSenseNode::publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud
     auto color_intrinsics = _stream_intrinsics[COLOR];
     //ROS_INFO("in publish itr");
     const uint16_t* image_depth16 = reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
-    auto *test_data = frame_depth_data;//reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
+    //auto *test_data = frame_depth_data;//reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
     unsigned char* color_data = _image[COLOR].data;
     const float MIN_DEPTH_THRESHOLD = 0.f;
     const float MAX_DEPTH_THRESHOLD = 5.f;
     float depth_point[3], color_point[3], color_pixel[2], scaled_depth, test_num;
+
 
     if (colorized_pointcloud)
     {
@@ -1179,9 +1194,13 @@ void BaseRealSenseNode::publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud
         for (int x = 0; x < depth_intrinsics.width; ++x)
         {
           scaled_depth = static_cast<float>(*image_depth16) * _depth_scale_meters;
-          test_num = static_cast<float>(*test_data) * _depth_scale_meters;
+          //test_num = static_cast<float>(*test_data);
+          auto depth_raw = frame_depth_data[y*depth_intrinsics.width + x];
+          depth_raw = depth_raw * _depth_scale_meters;
+
           float depth_pixel[2] = {static_cast<float>(x), static_cast<float>(y)};
-          rs2_deproject_pixel_to_point(depth_point, &depth_intrinsics, depth_pixel, test_num);
+          //rs2_deproject_pixel_to_point(depth_point, &depth_intrinsics, depth_pixel, test_num);
+          rs2_deproject_pixel_to_point(depth_point, &depth_intrinsics, depth_pixel, depth_raw);
           //rs2_deproject_pixel_to_point(depth_point, &depth_intrinsics, depth_pixel, scaled_depth);
 
           if (depth_point[2] <= MIN_DEPTH_THRESHOLD || depth_point[2] > MAX_DEPTH_THRESHOLD)
@@ -1197,6 +1216,12 @@ void BaseRealSenseNode::publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud
 
           rs2_transform_point_to_point(color_point, &_depth2color_extrinsics, depth_point);
           rs2_project_point_to_pixel(color_pixel, &color_intrinsics, color_point);
+
+          /*ROS_INFO("color height:%d", color_intrinsics.height);
+          ROS_INFO("color width:%d", color_intrinsics.width);
+          ROS_INFO("depth height:%d", depth_intrinsics.height);
+          ROS_INFO("depth width:%d", depth_intrinsics.width);*/
+
 
           if (color_pixel[1] < MIN_DEPTH_THRESHOLD || color_pixel[1] > color_intrinsics.height
               || color_pixel[0] < MIN_DEPTH_THRESHOLD || color_pixel[0] > color_intrinsics.width)
@@ -1219,7 +1244,8 @@ void BaseRealSenseNode::publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud
           }
 
           //++image_depth16;
-          ++test_data;
+          //++test_data;
+          //++frame_depth_data;
           //++test_num;
           //ROS_INFO("%f", test_num);
           ++iter_x; ++iter_y; ++iter_z;
@@ -1262,14 +1288,14 @@ void BaseRealSenseNode::publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud
 
 void BaseRealSenseNode::publishFPCTopic(rs2::frame frame, const ros::Time& t)
 {
-    //Temporal temp(_node_handle, _pnh, _dev, _serial_no);
-    //stream_index_pair stream{frame.get_profile().stream_type(), frame.get_profile().stream_index()};
-    //auto& image = _image[stream];
-    //image.data = (uint8_t*)frame.get_data();
-    //sensor_msgs::ImagePtr img;
-    //img = temp.getImage(image.data);
+    /*Temporal temp(_node_handle, _pnh, _dev, _serial_no);
+    stream_index_pair stream{frame.get_profile().stream_type(), frame.get_profile().stream_index()};
+    auto& image = _image[stream];
+    image.data = (uint8_t*)frame.get_data();
+    sensor_msgs::ImagePtr img;
+    img = temp.getImage(image.data);
 
-    //_filtered_pointcloud_publisher.publish(img);
+    _filtered_pointcloud_publisher.publish(img);*/
 }
 
 Extrinsics BaseRealSenseNode::rsExtrinsicsToMsg(const rs2_extrinsics& extrinsics) const
