@@ -2,6 +2,7 @@
 #include "../include/temporal.h"
 #include "../include/librs_postprocessing.h"
 #include <librealsense2/h/rs_frame.h>
+#define check_error(e) if (e) std::cout << rs2_get_error_message(e) << std::endl;
 
 using namespace realsense_ros_camera;
 
@@ -352,9 +353,9 @@ void BaseRealSenseNode::setupStreams()
             }
         }
         ROS_INFO("SETTING PP BLOCKS");
-        //RSPPAPI::RSPP_Init();
-        //RSPPAPI::SetPostProcessingParams(2,2,2,0.5,20,5,0.25,50);
-        static rs2_error * e = nullptr;
+        RSPPAPI::RSPP_Init();
+        RSPPAPI::SetPostProcessingParams(2,2,2,0.5,20,5,0.25,50);
+        /*static rs2_error * e = nullptr;
 
         static rs2_processing_block * temporal_filter_block = rs2_create_temporal_filter_block(&e);
         static rs2_frame_queue * temporal_filter_queue = rs2_create_frame_queue(1, &e);
@@ -363,9 +364,7 @@ void BaseRealSenseNode::setupStreams()
 
         rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_MAGNITUDE, 1, &e);
         rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.25, &e);
-        rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_SMOOTH_DELTA, 50, &e);
-
-
+        rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_SMOOTH_DELTA, 50, &e);*/
 
         //setFilters();
 
@@ -373,6 +372,16 @@ void BaseRealSenseNode::setupStreams()
 
         auto frame_callback = [this](rs2::frame frame)
         {
+
+          //float temporal_table_idx;
+/*
+          rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_MAGNITUDE, 1, &e);
+          check_error(e);
+          rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.25, &e);
+          check_error(e);
+          rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_SMOOTH_DELTA, 50, &e);
+          check_error(e);*/
+
             // We compute a ROS timestamp which is based on an initial ROS time at point of first frame,
             // and the incremental timestamp from the camera.
             // In sync mode the timestamp is based on ROS time
@@ -414,7 +423,7 @@ void BaseRealSenseNode::setupStreams()
 
             //ROS_INFO("before frame ref");
 
-            rs2_frame* frame_ref;
+
             /*if (frame_ref == nullptr)
             {
                ROS_INFO("FRAME NULL");
@@ -504,15 +513,28 @@ void BaseRealSenseNode::setupStreams()
             if(_pointcloud && is_depth_frame_arrived && is_color_frame_arrived &&
                (0 != _pointcloud_publisher.getNumSubscribers()))
             {
-              //ROS_INFO("rs2_process_frame");
-              frame_ref = frame.get();
+
+
+              /*static rs2_processing_block * temporal_filter_block = rs2_create_temporal_filter_block(&e);
+              check_error(e);
+              //ROS_INFO("%c",rs2_get_error_message(e));
+
+              static rs2_frame_queue * temporal_filter_queue = rs2_create_frame_queue(1, &e);
+              check_error(e);
+              rs2_start_processing_queue(temporal_filter_block, temporal_filter_queue, &e);
+              check_error(e);
+              //ROS_INFO("rs2_process_frame");*/
+              rs2_frame* frame_ref = frame.get();
+              //rs2::frame frame2(frame_ref);
+              //frame_ref =  frame2.get_data();
               //rs2_frame* f = rs2_extract_frame(frame_ref, i, &e);
               //const float* depth_frame_data = (const float*)(rs2_get_frame_data(frame_ref, &e));
               //ROS_INFO("%f", depth_frame_data);
               //rs2_process_frame(temporal_filter_block, frame_ref, &e);
               //rs2_frame * f = rs2_wait_for_frame(temporal_filter_queue, 10000, &e);
               rs2_frame * tf = PostProcessing(frame_ref);
-              //auto image_depth16 = reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
+              //tf = PostProcessing(frame_ref);
+              auto image_depth16 = reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
 
               //auto frame_depth_data = reinterpret_cast<const uint16_t*>(rs2_get_frame_data(f, &e));
               //frame_depth_data = reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
@@ -527,18 +549,27 @@ void BaseRealSenseNode::setupStreams()
               //const uint16_t* frame_depth_data = (const uint16_t*)(rs2_get_frame_data(f, &e));
               rs2::frame frame2(tf);
               const uint16_t* frame_depth_data = reinterpret_cast<const uint16_t*>(frame2.get_data());
+              //get_frame_number(); rs2_get_frame_number(frame_ref, &e);
 
 
               //ROS_INFO("publishPCTopic(...)");
               publishPCTopic(t, true, frame_depth_data);
-              if (tf != nullptr)
+              if (tf == nullptr)
               {
-                 ROS_INFO("FRAME NOT NULL");
+                 ROS_INFO("FRAME NULL");
               }
-              rs2_release_frame(tf);
+              //rs2_release_frame(tf);
+              //frame.~frame();
+              /*rs2_delete_processing_block(temporal_filter_block);
+              temporal_filter_block = nullptr;
+
+              rs2_delete_frame_queue(temporal_filter_queue);
+              temporal_filter_queue = nullptr;*/
+
             }
+            //RSPPAPI::RSPP_Fini();
+
         };
-        RSPPAPI::RSPP_Fini();
 
         // Streaming IMAGES
         for (auto& streams : IMAGE_STREAMS)
@@ -1150,7 +1181,8 @@ void BaseRealSenseNode::publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud
           scaled_depth = static_cast<float>(*image_depth16) * _depth_scale_meters;
           test_num = static_cast<float>(*test_data) * _depth_scale_meters;
           float depth_pixel[2] = {static_cast<float>(x), static_cast<float>(y)};
-          rs2_deproject_pixel_to_point(depth_point, &depth_intrinsics, depth_pixel, scaled_depth);
+          rs2_deproject_pixel_to_point(depth_point, &depth_intrinsics, depth_pixel, test_num);
+          //rs2_deproject_pixel_to_point(depth_point, &depth_intrinsics, depth_pixel, scaled_depth);
 
           if (depth_point[2] <= MIN_DEPTH_THRESHOLD || depth_point[2] > MAX_DEPTH_THRESHOLD)
           {
@@ -1186,9 +1218,10 @@ void BaseRealSenseNode::publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud
             *iter_b = static_cast<uint8_t>(color_data[offset + 2]);
           }
 
-          ++image_depth16;
-          ++test_num;
-          ROS_INFO("%f", test_num);
+          //++image_depth16;
+          ++test_data;
+          //++test_num;
+          //ROS_INFO("%f", test_num);
           ++iter_x; ++iter_y; ++iter_z;
           ++iter_r; ++iter_g; ++iter_b;
         }
@@ -1219,7 +1252,7 @@ void BaseRealSenseNode::publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud
           *iter_z = depth_point[2];
 
           ++image_depth16;
-
+          //ROS_INFO("%f", scaled_depth);
           ++iter_x; ++iter_y; ++iter_z;
         }
       }
