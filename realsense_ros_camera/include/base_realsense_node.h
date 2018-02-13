@@ -56,7 +56,10 @@ namespace realsense_ros_camera
         void updateStreamCalibData(const rs2::video_stream_profile& video_profile);
         Eigen::Quaternionf rotationMatrixToQuaternion(float rotation[3]) const;
         void publishStaticTransforms();
-        void publishPCTopic(const ros::Time& t);
+        //rs2::frame BaseRealSenseNode::setFilter(rs2::frame frame);
+        void publishPCTopic(const ros::Time& t, bool colorized_pointcloud, const uint16_t* frame_depth_data);
+        void publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud, bool colorized_pointcloud,const uint16_t* frame_depth_data);
+        void publishFPCTopic(rs2::frame frame,const ros::Time& t);
         Extrinsics rsExtrinsicsToMsg(const rs2_extrinsics& extrinsics) const;
         Extrinsics getFisheye2ImuExtrinsicsMsg();
         Extrinsics getFisheye2DepthExtrinsicsMsg();
@@ -97,6 +100,8 @@ namespace realsense_ros_camera
         std::map<stream_index_pair, std::vector<rs2::stream_profile>> _enabled_profiles;
 
         ros::Publisher _pointcloud_publisher;
+        ros::Publisher _raw_pointcloud_publisher;
+        ros::Publisher _filtered_pointcloud_publisher;
         ros::Time _ros_time_base;
         bool _sync_frames;
         bool _pointcloud;
@@ -115,6 +120,7 @@ namespace realsense_ros_camera
     protected:
         void setParam(rs415_paramsConfig &config, base_depth_param param);
         void setParam(rs435_paramsConfig &config, base_depth_param param);
+        //void setFilter();
 
     private:
         void callback(base_d400_paramsConfig &config, uint32_t level);
