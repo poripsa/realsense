@@ -69,11 +69,13 @@ add_library(${PROJECT_NAME}
     include/rs415_node.h
     include/rs435_node.h
     include/sr300_node.h
+    include/librs_postprocessing.h
     src/realsense_node_factory.cpp
     src/base_realsense_node.cpp
     src/rs415_node.cpp
     src/rs435_node.cpp
     src/sr300_node.cpp
+    src/librs_postprocessing.cpp
     )
 
 add_dependencies(${PROJECT_NAME} ${PROJECT_NAME}_generate_messages_cpp)

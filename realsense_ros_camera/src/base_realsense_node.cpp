@@ -1,5 +1,5 @@
 #include "../include/base_realsense_node.h"
-#include "../include/temporal.h"
+//#include "../include/temporal.h"
 #include "../include/librs_postprocessing.h"
 #include <librealsense2/h/rs_frame.h>
 #define check_error(e) if (e) std::cout << rs2_get_error_message(e) << std::endl;
@@ -352,10 +352,9 @@ void BaseRealSenseNode::setupStreams()
                 updateStreamCalibData(video_profile);
             }
         }
-        ROS_INFO("SETTING PP BLOCKS");
-        RSPPAPI::RSPP_Init();
+
         //RSPPAPI::SetPostProcessingParams(1,2,2,0.5,20,5,0.25,50);
-        RSPPAPI::SetPostProcessingParams(1, 1, 2, 0.5f, 20.0f, 2, 0.25f, 50.0f);
+
         /*static rs2_error * e = nullptr;
 
         static rs2_processing_block * temporal_filter_block = rs2_create_temporal_filter_block(&e);
@@ -366,43 +365,20 @@ void BaseRealSenseNode::setupStreams()
         rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_MAGNITUDE, 1, &e);
         rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.25, &e);
         rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_SMOOTH_DELTA, 50, &e);*/
-
-        //setFilters();
-
-        //rs2::frame frame =
-        //const rs2::video_frame vid_frame;
-
+        rs2_error* e = 0;
+        ROS_INFO("SETTING PP BLOCKS");
+        RSPP_Init();
+        SetPostProcessingParams(1, 1, 2, 0.5f, 20.0f, 0, 0.25f, 50.0f);
 
         auto frame_callback = [this](rs2::frame frame)
         {
           //const rs2::video_frame vid_frame(frame);
-          auto image = frame.as<rs2::video_frame>();
-          int w;
-
-          //float temporal_table_idx;
-/*
-          rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_MAGNITUDE, 1, &e);
-          check_error(e);
-          rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.25, &e);
-          check_error(e);
-          rs2_set_option((rs2_options *)temporal_filter_block, RS2_OPTION_FILTER_SMOOTH_DELTA, 50, &e);
-          check_error(e);*/
+          //auto image = frame.as<rs2::video_frame>(); *****************
+          //int w; ******************
 
             // We compute a ROS timestamp which is based on an initial ROS time at point of first frame,
             // and the incremental timestamp from the camera.
             // In sync mode the timestamp is based on ROS time
-          /*rs2::temporal_filter temporal_filter;
-          rs2::pipeline pipe;
-          rs2::frameset data = pipe.wait_for_frames();
-          rs2::frame depth_frame = data.get_depth_frame();
-          //_dev->get_frame_data(rs::stream::depth);
-          frame = temporal_filter.proccess(depth_frame);
-          temporal_filter.set_option(RS2_OPTION_FILTER_OPTION, 1);
-          temporal_filter.set_option(RS2_OPTION_FILTER_MAGNITUDE, 5.0f);
-          temporal_filter.set_option(RS2_OPTION_FILTER_SMOOTH_ALPHA, 0.25f);*/
-          //ROS_INFO("setting filter");
-
-          // rs2_frame* get() const { return frame_ref; }
 
             if (false == _intialize_time_base)
             {
@@ -419,30 +395,6 @@ void BaseRealSenseNode::setupStreams()
 
             auto is_color_frame_arrived = false;
             auto is_depth_frame_arrived = false;
-
-            //_sensors[DEPTH].set_option(rs2_option::RS2_OPTION_FILTER_OPTION, 16.0f);
-            /*rs2::temporal_filter temporal_filter;
-            rs2::options
-            auto stream = streams.front();
-            auto& sens = _sensors[stream];
-            sens.open(profiles);*/
-
-            //ROS_INFO("before frame ref");
-
-
-            /*if (frame_ref == nullptr)
-            {
-               ROS_INFO("FRAME NULL");
-            }*/
-            //frame_ref.ge
-
-            /*frame_ref = RSPPAPI::PostProcessing(frame_ref);
-            ROS_INFO("after return");
-
-            rs2_release_frame(frame_ref);
-            ROS_INFO("clear");*/
-
-
 
             if (frame.is<rs2::frameset>())
             {
@@ -486,7 +438,7 @@ void BaseRealSenseNode::setupStreams()
             else
             {
                 auto stream_type = frame.get_profile().stream_type();
-                w = image.get_width();
+                //w = image.get_width(); ***********
                 ROS_DEBUG("%s video frame arrived. frame_number: %llu ; frame_TS: %f ; ros_TS(NSec): %lu",
                           rs2_stream_to_string(stream_type), frame.get_frame_number(), frame.get_timestamp(), t.toNSec());
                 ROS_INFO("here");
@@ -518,60 +470,39 @@ void BaseRealSenseNode::setupStreams()
               publishFPCTopic(frame, t);
             }
 
+            //int i = 0;
 
             if(_pointcloud && is_depth_frame_arrived && is_color_frame_arrived &&
                (0 != _pointcloud_publisher.getNumSubscribers()))
             {
-
-
-              /*static rs2_processing_block * temporal_filter_block = rs2_create_temporal_filter_block(&e);
-              check_error(e);
-              //ROS_INFO("%c",rs2_get_error_message(e));
-
-              static rs2_frame_queue * temporal_filter_queue = rs2_create_frame_queue(1, &e);
-              check_error(e);
-              rs2_start_processing_queue(temporal_filter_block, temporal_filter_queue, &e);
-              check_error(e);
-              //ROS_INFO("rs2_process_frame");*/
+              rs2_error* e = 0;
               rs2_frame* frame_ref = frame.get();
-              //rs2::frame frame2(frame_ref);
-              //frame_ref =  frame2.get_data();
-              //rs2_frame* f = rs2_extract_frame(frame_ref, i, &e);
-              //const float* depth_frame_data = (const float*)(rs2_get_frame_data(frame_ref, &e));
-              //ROS_INFO("%f", depth_frame_data);
-              //rs2_process_frame(temporal_filter_block, frame_ref, &e);
-              //rs2_frame * f = rs2_wait_for_frame(temporal_filter_queue, 10000, &e);
               rs2_frame * tf = PostProcessing(frame_ref);
               //int w = rs2_get_frame_width(tf, &e);
-              //tf = PostProcessing(frame_ref);
-              //auto image_depth16 = reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
 
-              //auto frame_depth_data = reinterpret_cast<const uint16_t*>(rs2_get_frame_data(f, &e));
-              //frame_depth_data = reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
-              /*auto axes = *(reinterpret_cast<const float3*>(frame.get_data()));
-              if (GYRO == stream_index)
+              //auto frame_depth_data = reinterpret_cast<const uint16_t*>(rs2_get_frame_data(f, &e)); *******
+              //auto frame_depth_data = reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
+              //rs2::frame frame2(tf);
+              //auto frame_depth_data = (const uint16_t*)frame2.get_data();
+
+              auto frame_depth_data = (const uint16_t*)rs2_get_frame_data(tf, &e);
+              if(e)
+              {printf("    %s\n", rs2_get_error_message(e));}
+
+              /*if (i<20)
               {
-                  imu_msg.angular_velocity.x = axes.x;
-                  imu_msg.angular_velocity.y = axes.y;
-                  imu_msg.angular_velocity.z = axes.z;
-              }*/
-
-              //const uint16_t* frame_depth_data = (const uint16_t*)(rs2_get_frame_data(f, &e));
-              rs2::frame frame2(tf);
-              auto frame_depth_data = (const uint16_t*)frame2.get_data();
-              //get_frame_number(); rs2_get_frame_number(frame_ref, &e);
-              //>>>>>>>>>>>rs2_get_frame_width
-
-
-
+                ROS_INFO("frame_depth_data(int-pointer): %d",*frame_depth_data);
+              }
+              i++;*/
+              //ROS_INFO("depth data: %d",*frame_depth_data);
               //ROS_INFO("publishPCTopic(...)");
               publishPCTopic(t, true, frame_depth_data);
-              //publishPCTopic(t, true, frame_depth_data, w);
-              if (tf == nullptr)
+              /*if (tf == nullptr)**********************
               {
                  ROS_INFO("FRAME NULL");
-              }
-              //rs2_release_frame(tf);
+              }*/
+              rs2_release_frame(tf);
+              rs2_release_frame(frame_ref);
               //frame.~frame();
               /*rs2_delete_processing_block(temporal_filter_block);
               temporal_filter_block = nullptr;
@@ -583,6 +514,8 @@ void BaseRealSenseNode::setupStreams()
             //RSPPAPI::RSPP_Fini();
 
         };
+
+        //RSPP_Fini();
 
         // Streaming IMAGES
         for (auto& streams : IMAGE_STREAMS)
@@ -709,15 +642,15 @@ void BaseRealSenseNode::setupStreams()
             if (_enable[GYRO])
             {
                 ROS_INFO_STREAM(_stream_name[GYRO] << " stream is enabled - " << "fps: " << _fps[GYRO]);
-                auto gyroInfo = getImuInfo(GYRO);
-                _info_publisher[GYRO].publish(gyroInfo);
+                //auto gyroInfo = getImuInfo(GYRO);
+                //_info_publisher[GYRO].publish(gyroInfo);
             }
 
             if (_enable[ACCEL])
             {
                 ROS_INFO_STREAM(_stream_name[ACCEL] << " stream is enabled - " << "fps: " << _fps[ACCEL]);
-                auto accelInfo = getImuInfo(ACCEL);
-                _info_publisher[ACCEL].publish(accelInfo);
+                //auto accelInfo = getImuInfo(ACCEL);
+                //_info_publisher[ACCEL].publish(accelInfo);
             }
         }
 
@@ -1117,7 +1050,7 @@ rs2_frame * PostProcessing(rs2_frame * frame, bool decimation, bool disparity, b
   // depth to disparity
   if (disparity)
     frame = Process(g_disparity_transforg_1_block, g_disparity_transforg_1_queue, frame);
-
+depth_raw
   // spatial
   if (spatial)
     frame = Process(g_spatial_filter_block, g_spatial_filter_queue, frame);
@@ -1175,9 +1108,9 @@ void BaseRealSenseNode::publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud
     //auto *test_data = frame_depth_data;//reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
     unsigned char* color_data = _image[COLOR].data;
     const float MIN_DEPTH_THRESHOLD = 0.f;
-    const float MAX_DEPTH_THRESHOLD = 5.f;
-    float depth_point[3], color_point[3], color_pixel[2], scaled_depth, test_num;
-
+    const float MAX_DEPTH_THRESHOLD = 5000.f;
+    float depth_point[3], color_point[3], color_pixel[2], scaled_depth, scaled_depth_float, scaled_depth_prev;
+    int i=0;
 
     if (colorized_pointcloud)
     {
@@ -1193,10 +1126,24 @@ void BaseRealSenseNode::publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud
       {
         for (int x = 0; x < depth_intrinsics.width; ++x)
         {
-          scaled_depth = static_cast<float>(*image_depth16) * _depth_scale_meters;
+          scaled_depth_prev = static_cast<float>(*image_depth16) * _depth_scale_meters;
+          ROS_INFO("scaled_depth_prev: %f",scaled_depth_prev);
           //test_num = static_cast<float>(*test_data);
-          auto depth_raw = frame_depth_data[y*depth_intrinsics.width + x];
-          depth_raw = depth_raw * _depth_scale_meters;
+          //float scaled_depth = frame_depth_data[y*depth_intrinsics.width + x];
+          //depth_raw = depth_raw * _depth_scale_meters;
+          scaled_depth_float = (float)(*frame_depth_data);
+          scaled_depth = scaled_depth_float * _depth_scale_meters;
+          //if(i<20)
+          //{
+            ROS_INFO("frame_depth_data: %d",*frame_depth_data);
+            ROS_INFO("(float)(*frame_depth_data) scaled_depth_float: %f",scaled_depth_float);
+            ROS_INFO("scaled_depth*_depth_scale_meters: %f",scaled_depth);
+          //}
+          //i++;
+
+          //ROS_INFO("scaled depth: %f",scaled_depth);
+          //scaled_depth = static_cast<float>(*frame_depth_data) * _depth_scale_meters;
+          //scaled_depth = static_cast<float>(depth_raw) * _depth_scale_meters;
           //change depth/points if this works cuz scan_tunnel
 
           float depth_pixel[2] = {static_cast<float>(x), static_cast<float>(y)};
@@ -1246,7 +1193,7 @@ void BaseRealSenseNode::publishITRTopic(sensor_msgs::PointCloud2& msg_pointcloud
 
           ++image_depth16;
           //++test_data;
-          //++frame_depth_data;
+          frame_depth_data++;
           //++test_num;
           //ROS_INFO("%f", test_num);
           ++iter_x; ++iter_y; ++iter_z;
@@ -1330,7 +1277,7 @@ Extrinsics BaseRealSenseNode::getFisheye2DepthExtrinsicsMsg()
     return extrinsicsMsg;
 }
 
-IMUInfo BaseRealSenseNode::getImuInfo(const stream_index_pair& stream_index)
+/*IMUInfo BaseRealSenseNode::getImuInfo(const stream_index_pair& stream_index)
 {
     IMUInfo info{};
     auto imuIntrinsics = _sensors[stream_index].get_motion_intrinsics(stream_index.first);
@@ -1355,7 +1302,7 @@ IMUInfo BaseRealSenseNode::getImuInfo(const stream_index_pair& stream_index)
         info.bias_variances[i] = imuIntrinsics.bias_variances[i];
     }
     return info;
-}
+}*/
 
 void BaseRealSenseNode::publishFrame(rs2::frame f, const ros::Time& t)
 {

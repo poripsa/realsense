@@ -1,4 +1,5 @@
 <launch>
+  <remap from="/camera/"                 to="/realsense/" />
   <arg name="manager"             default="realsense_ros_camera_manager"/>
   <arg name="serial_no"           default=""/>
   <arg name="json_file_path"      default=""/>
@@ -42,8 +43,9 @@
   <arg name="enable_pointcloud"   default="false"/>
   <arg name="enable_sync"         default="false"/>
 
-  <node pkg="nodelet" type="nodelet" name="$(arg manager)" args="manager" output="screen"/>
+  <node pkg="nodelet" type="nodelet" name="$(arg manager)" args="manager" output="screen"/>  <!--launch-prefix="xterm -e gdb args"-->
   <node pkg="nodelet" type="nodelet" name="realsense_ros_camera" args="load realsense_ros_camera/RealSenseNodeFactory $(arg manager)">
+    <remap from="/camera/"                 to="/realsense/" />
     <param name="serial_no"                type="str"  value="$(arg serial_no)"/>
     <param name="json_file_path"           type="str"  value="$(arg json_file_path)"/>
 
@@ -79,13 +81,18 @@
     <param name="accel_fps"                type="int"  value="$(arg accel_fps)"/>
     <param name="enable_imu"               type="bool" value="$(arg enable_imu)"/>
 
-    <param name="depth_optical_frame_id"   type="str"  value="camera_depth_optical_frame"/>
-    <param name="infra1_optical_frame_id"  type="str"  value="camera_infra1_optical_frame"/>
-    <param name="infra2_optical_frame_id"  type="str"  value="camera_infra2_optical_frame"/>
-    <param name="color_optical_frame_id"   type="str"  value="camera_rgb_optical_frame"/>
-    <param name="fisheye_optical_frame_id" type="str"  value="camera_fisheye_optical_frame"/>
-    <param name="accel_optical_frame_id"   type="str"  value="camera_accel_optical_frame"/>
-    <param name="gyro_optical_frame_id"    type="str"  value="camera_gyro_optical_frame"/>
+    <param name="base_frame_id"            type="str"  value="realsense_link"/>
+    <param name="depth_frame_id"           type="str"  value="realsense_depth_frame"/>
+    <param name="infra1_frame_id"          type="str"  value="realsense_infra1_frame"/>
+    <param name="infra2_frame_id"          type="str"  value="realsense_infra2_frame"/>
+    <param name="color_frame_id"           type="str"  value="realsense_color_frame"/>
+    <param name="depth_optical_frame_id"   type="str"  value="realsense_depth_optical_frame"/>
+    <param name="infra1_optical_frame_id"  type="str"  value="realsense_infra1_optical_frame"/>
+    <param name="infra2_optical_frame_id"  type="str"  value="realsense_infra2_optical_frame"/>
+    <param name="color_optical_frame_id"   type="str"  value="realsense_rgb_optical_frame"/>
+    <param name="fisheye_optical_frame_id" type="str"  value="realsense_fisheye_optical_frame"/>
+    <param name="accel_optical_frame_id"   type="str"  value="realsense_accel_optical_frame"/>
+    <param name="gyro_optical_frame_id"    type="str"  value="realsense_gyro_optical_frame"/>
   </node>
 </launch>
 
