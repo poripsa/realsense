@@ -594,6 +594,13 @@ void BaseRealSenseNode::setupStreams()
                         ROS_DEBUG("publishAlignedDepthToOthers(...)");
                         publishAlignedDepthToOthers(depth_frame, frames, t);
                     }
+
+
+                    if(_pointcloud && (0 != _pointcloud_publisher.getNumSubscribers()))
+                    {
+                        ROS_DEBUG("publishPCTopic(...)");
+                        publishRgbToDepthPCTopic(t, is_frame_arrived, depth_frame);
+                    }
                 }
                 else
                 {
@@ -613,11 +620,6 @@ void BaseRealSenseNode::setupStreams()
                                  _encoding);
                 }
 
-                if(_pointcloud && (0 != _pointcloud_publisher.getNumSubscribers()))
-                {
-                    ROS_DEBUG("publishPCTopic(...)");
-                    publishRgbToDepthPCTopic(t, is_frame_arrived);
-                }
             }
             catch(const std::exception& ex)
             {
@@ -1045,7 +1047,7 @@ void BaseRealSenseNode::publishStaticTransforms()
     }
 }
 
-void BaseRealSenseNode::publishRgbToDepthPCTopic(const ros::Time& t, const std::map<stream_index_pair, bool>& is_frame_arrived)
+void BaseRealSenseNode::publishRgbToDepthPCTopic(const ros::Time& t, const std::map<stream_index_pair, bool>& is_frame_arrived, rs2::frame depth_frame)
 {
     try
     {
