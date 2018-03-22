@@ -580,6 +580,7 @@ void BaseRealSenseNode::setupStreams()
                         else
                         {
                             std::lock_guard<std::mutex> lock(_mtx);
+                            f = decimation.process(f);
                             f = disparity_in->process(f);
                             f = spatial.process(f);
                             f = temporal.process(f);
@@ -1065,8 +1066,27 @@ void BaseRealSenseNode::publishRgbToDepthPCTopic(const ros::Time& t, const std::
 
     auto& depth2color_extrinsics = _depth_to_other_extrinsics[COLOR];
     auto color_intrinsics = _stream_intrinsics[COLOR];
-    auto image_depth16 = reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
+    //auto image_depth16 = reinterpret_cast<const uint16_t*>(_image[DEPTH].data);
     auto depth_intrinsics = _stream_intrinsics[DEPTH];
+
+    //patch_size hardcoded as no visibility on ppx..fx intrinsics from rs2::frame
+
+    auto f_intrin = depth_frame.as<rs2::video_frame>();
+    depth_intrinsics.height = f_intrin.get_height();
+    depth_intrinsics.width = f_intrin.get_width();
+    uint8_t patch_size =  0x1 << (uint8_t(2 - 1));
+    depth_intrinsics.ppx = depth_intrinsics.ppx / patch_size;
+    depth_intrinsics.ppy =  depth_intrinsics.ppy / patch_size;
+    depth_intrinsics.fx = depth_intrinsics.fx / patch_size;
+    depth_intrinsics.fy = depth_intrinsics.fx / patch_size;
+    color_intrinsics.height = f_intrin.get_height();
+    color_intrinsics.width = f_intrin.get_width();
+    color_intrinsics.ppx = color_intrinsics.ppx / patch_size;
+    color_intrinsics.ppy =  color_intrinsics.ppy / patch_size;
+    color_intrinsics.fx = color_intrinsics.fx / patch_size;
+    color_intrinsics.fy = color_intrinsics.fx / patch_size;
+
+
     sensor_msgs::PointCloud2 msg_pointcloud;
     msg_pointcloud.header.stamp = t;
     msg_pointcloud.header.frame_id = _optical_frame_id[DEPTH];
@@ -1091,6 +1111,7 @@ void BaseRealSenseNode::publishRgbToDepthPCTopic(const ros::Time& t, const std::
     sensor_msgs::PointCloud2Iterator<uint8_t>iter_g(msg_pointcloud, "g");
     sensor_msgs::PointCloud2Iterator<uint8_t>iter_b(msg_pointcloud, "b");
 
+    auto depth_data = reinterpret_cast<const uint16_t*>(depth_frame.get_data());
     float depth_point[3], color_point[3], color_pixel[2], scaled_depth;
     unsigned char* color_data = _image[COLOR].data;
 
@@ -1099,7 +1120,7 @@ void BaseRealSenseNode::publishRgbToDepthPCTopic(const ros::Time& t, const std::
     {
         for (int x = 0; x < depth_intrinsics.width; ++x)
         {
-            scaled_depth = static_cast<float>(*image_depth16) * _depth_scale_meters;
+            scaled_depth = static_cast<float>(*depth_data) * _depth_scale_meters;
             float depth_pixel[2] = {static_cast<float>(x), static_cast<float>(y)};
             rs2_deproject_pixel_to_point(depth_point, &depth_intrinsics, depth_pixel, scaled_depth);
 
@@ -1137,7 +1158,7 @@ void BaseRealSenseNode::publishRgbToDepthPCTopic(const ros::Time& t, const std::
                 *iter_b = static_cast<uint8_t>(color_data[offset + 2]);
             }
 
-            ++image_depth16;
+            ++depth_data;
             ++iter_x; ++iter_y; ++iter_z;
             ++iter_r; ++iter_g; ++iter_b;
         }
